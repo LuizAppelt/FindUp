@@ -102,8 +102,8 @@ export default function MapScreen() {
   // Ícones dinâmicos: Vermelho para perdido, Azul para achado
   const getMarkerIcon = (type) => {
     return type === 'lost' 
-      ? 'https://www.flaticon.com/free-animated-icon/search_17688096' // Ícone perdido
-      : 'https://www.flaticon.com/free-animated-icon/search_17688096'; // Ícone encontrado
+      ? 'https://cdn-icons-png.flaticon.com/128/2776/2776067.png' // Ícone perdido
+      : 'https://cdn-icons-png.flaticon.com/128/149/149060.png'; // Ícone encontrado
   };
 
   return (
