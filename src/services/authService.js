@@ -24,17 +24,20 @@ export async function signIn(email, password) {
 
 export async function signUp(name, email, password) {
   try {
-    const response = await axios.post(`${API_URL}/signup`, { name, email, password });
+    const response = await axios.post(`${API_URL}/signup`, {
+      name,
+      email,
+      password,
+    });
+
     return response.data;
   } catch (error) {
-    if (error.response) {
-      if (error.response.status === 400) {
-        throw new Error('Requisição inválida.');
-      }
-      if (error.response.status === 409) {
-        throw new Error('Usuário já cadastrado.');
-      }
-    }
-    throw new Error('Erro ao cadastrar usuário.');
+    console.log("ERRO COMPLETO:", error.response?.data);
+
+    throw new Error(
+      error.response?.data?.message ||
+      JSON.stringify(error.response?.data) ||
+      "Erro ao cadastrar usuário."
+    );
   }
 }
