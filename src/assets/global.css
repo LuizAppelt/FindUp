@@ -1,7 +1,7 @@
 @import "tailwindcss";
 
 html, body, #root {
-    height: 50%;
+    height: 100%;
 }
 
 .glass-effect {
