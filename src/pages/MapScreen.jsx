@@ -6,14 +6,6 @@ const center = { lat: -28.2612, lng: -52.4083 };
 
 /*TODO abrir mapa na localizacao atual do usuario, e nao no centro de passo fundo*/
 /* abrir na localizacao atual do usuario*/
-useEffect(() => {
-  if ("geolocation" in navigator) {
-    navigator.geolocation.getCurrentPosition((position) => {
-      const { latitude, longitude } = position.coords;
-      setUserLocation([latitude, longitude]);
-    });
-  }
-}, []);
 
 // Estilo minimalista escuro (Dark/Black Mode)
 const darkMinimalistStyle = [
