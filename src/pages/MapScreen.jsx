@@ -1,11 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react'; // 1. Adicionado o useEffect aqui
 import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 
 const containerStyle = { width: '100%', height: '100vh' };
-const center = { lat: -28.2612, lng: -52.4083 };
-
-/*TODO abrir mapa na localizacao atual do usuario, e nao no centro de passo fundo*/
-/* abrir na localizacao atual do usuario*/
+// Esse passa a ser o centro padrão (caso o usuário negue o GPS)
+const defaultCenter = { lat: -28.2612, lng: -52.4083 };
 
 // Estilo minimalista escuro (Dark/Black Mode)
 const darkMinimalistStyle = [
@@ -29,6 +27,9 @@ export default function MapScreen() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   });
 
+  // 2. Estado para controlar o centro dinâmico do mapa
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+
   // Estado para armazenar os itens no mapa
   const [items, setItems] = useState([{}]);
 
@@ -36,6 +37,25 @@ export default function MapScreen() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [formData, setFormData] = useState({ id: null, title: '', description: '', type: 'lost', photo: '' });
+  
+  // Estado para a foto (Corrigindo um erro onde 'setFoto' não existia no seu arquivo original)
+  const [foto, setFoto] = useState(null);
+
+  // 3. SEU CÓDIGO ADAPTADO: Captura a geolocalização e atualiza o estado do mapa
+  useEffect(() => {
+    if ("geolocation" in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          const { latitude, longitude } = position.coords;
+          // Formatado como objeto {} exigido pelo Google Maps
+          setMapCenter({ lat: latitude, lng: longitude });
+        },
+        (error) => {
+          console.warn("Permissão de localização negada. Usando centro padrão.", error);
+        }
+      );
+    }
+  }, []);
 
   // Clique no Mapa: Prepara para criar novo ponto
   const handleMapClick = useCallback((event) => {
@@ -102,7 +122,7 @@ export default function MapScreen() {
           <GoogleMap
             language="pt-BR"
             mapContainerStyle={containerStyle}
-            center={center}
+            center={mapCenter} // 4. Alterado aqui de 'center' estático para 'mapCenter' dinâmico
             zoom={15}
             onClick={handleMapClick}
             options={{
@@ -114,15 +134,17 @@ export default function MapScreen() {
           >
             {/* Renderiza todos os pontos salvos */}
             {items.map(item => (
-              <MarkerF 
-                key={item.id}
-                position={{ lat: item.lat, lng: item.lng }}
-                onClick={() => handleMarkerClick(item)}
-                icon={{
-                  url: getMarkerIcon(item.type),
-                  scaledSize: new window.google.maps.Size(35, 35)
-                }}
-              />
+              item.id ? ( // Evita renderizar itens vazios iniciais
+                <MarkerF 
+                  key={item.id}
+                  position={{ lat: item.lat, lng: item.lng }}
+                  onClick={() => handleMarkerClick(item)}
+                  icon={{
+                    url: getMarkerIcon(item.type),
+                    scaledSize: new window.google.maps.Size(35, 35)
+                  }}
+                />
+              ) : null
             ))}
           </GoogleMap>
         ) : (
