@@ -4,6 +4,17 @@ import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
 const containerStyle = { width: '100%', height: '100vh' };
 const center = { lat: -28.2612, lng: -52.4083 };
 
+/*TODO abrir mapa na localizacao atual do usuario, e nao no centro de passo fundo*/
+/* abrir na localizacao atual do usuario*/
+useEffect(() => {
+  if ("geolocation" in navigator) {
+    navigator.geolocation.getCurrentPosition((position) => {
+      const { latitude, longitude } = position.coords;
+      setUserLocation([latitude, longitude]);
+    });
+  }
+}, []);
+
 // Estilo minimalista escuro (Dark/Black Mode)
 const darkMinimalistStyle = [
   { elementType: "geometry", stylers: [{ color: "#121212" }] },
@@ -27,9 +38,7 @@ export default function MapScreen() {
   });
 
   // Estado para armazenar os itens no mapa
-  const [items, setItems] = useState([
-    { id: 1, lat: -28.2612, lng: -52.4083, title: 'Chave do Carro', description: 'Chaveiro preto da Fiat', type: 'lost', photo: '' }
-  ]);
+  const [items, setItems] = useState([{}]);
 
   // Estados de controle do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -81,8 +90,8 @@ export default function MapScreen() {
   // Ícones dinâmicos: Vermelho para perdido, Azul para achado
   const getMarkerIcon = (type) => {
     return type === 'lost' 
-      ? 'https://cdn-icons-png.flaticon.com/512/684/684908.png' // Ícone vermelho/padrão
-      : 'https://cdn-icons-png.flaticon.com/512/149/149059.png'; // Ícone azul/diferente
+      ? 'https://www.flaticon.com/free-animated-icon/search_17688096' // Ícone perdido
+      : 'https://www.flaticon.com/free-animated-icon/search_17688096'; // Ícone encontrado
   };
 
   return (
@@ -92,7 +101,6 @@ export default function MapScreen() {
       <div className="absolute top-0 left-0 w-full p-6 z-10 flex justify-between items-center bg-gradient-to-b from-black/90 to-transparent pointer-events-none">
         <h1 className="text-2xl font-bold tracking-tight drop-shadow-lg">FindUP</h1>
         <div className="w-12 h-12 rounded-full overflow-hidden border border-white/20 shadow-lg pointer-events-auto cursor-pointer">
-          <img src="https://i.pravatar.cc/100?img=11" alt="Perfil" className="w-full h-full object-cover"/>
         </div>
       </div>
 
@@ -100,6 +108,7 @@ export default function MapScreen() {
       <div className="absolute inset-0">
         {isLoaded ? (
           <GoogleMap
+            language="pt-BR"
             mapContainerStyle={containerStyle}
             center={center}
             zoom={15}
@@ -184,6 +193,15 @@ export default function MapScreen() {
                 onChange={(e) => setFormData({...formData, photo: e.target.value})}
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/40 transition-colors text-sm"
               />
+              
+              {/* upar foto */}
+              <input 
+                type="file" 
+                accept="image/*" 
+                capture="environment" /* Abre a câmera no celular */
+                onChange={(e) => setFoto(e.target.files[0])} 
+              />
+
 
               {/* Botões de Ação */}
               <div className="flex gap-3 mt-2">
