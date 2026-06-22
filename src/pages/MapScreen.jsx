@@ -1,5 +1,5 @@
-import { useState, useCallback, useEffect } from 'react'; // 1. Adicionado o useEffect aqui
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { useState, useCallback, useEffect } from 'react'; 
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindow } from '@react-google-maps/api';
 
 const containerStyle = { width: '100%', height: '100vh' };
 // Esse passa a ser o centro padrão (caso o usuário negue o GPS)
@@ -27,27 +27,29 @@ export default function MapScreen() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   });
 
-  // 2. Estado para controlar o centro dinâmico do mapa
+  // ESTADO ADICIONADO: Controla qual item o mouse está em cima no momento (Hover)
+  const [itemFocado, setItemFocado] = useState(null);
+
+  // Estado para controlar o centro dinâmico do mapa
   const [mapCenter, setMapCenter] = useState(defaultCenter);
 
   // Estado para armazenar os itens no mapa
-  const [items, setItems] = useState([{}]);
+  const [items, setItems] = useState([]);
 
   // Estados de controle do Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [formData, setFormData] = useState({ id: null, title: '', description: '', type: 'lost', photo: '' });
   
-  // Estado para a foto (Corrigindo um erro onde 'setFoto' não existia no seu arquivo original)
+  // Estado para a foto
   const [foto, setFoto] = useState(null);
 
-  // 3. SEU CÓDIGO ADAPTADO: Captura a geolocalização e atualiza o estado do mapa
+  // Captura a geolocalização e atualiza o estado do mapa
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          // Formatado como objeto {} exigido pelo Google Maps
           setMapCenter({ lat: latitude, lng: longitude });
         },
         (error) => {
@@ -122,7 +124,7 @@ export default function MapScreen() {
           <GoogleMap
             language="pt-BR"
             mapContainerStyle={containerStyle}
-            center={mapCenter} // 4. Alterado aqui de 'center' estático para 'mapCenter' dinâmico
+            center={mapCenter} 
             zoom={15}
             onClick={handleMapClick}
             options={{
@@ -134,7 +136,7 @@ export default function MapScreen() {
           >
             {/* Renderiza todos os pontos salvos */}
             {items.map(item => (
-              item.id ? ( // Evita renderizar itens vazios iniciais
+              item.id ? ( 
                 <MarkerF 
                   key={item.id}
                   position={{ lat: item.lat, lng: item.lng }}
@@ -143,7 +145,34 @@ export default function MapScreen() {
                     url: getMarkerIcon(item.type),
                     scaledSize: new window.google.maps.Size(35, 35)
                   }}
-                />
+                  // MUDANÇA AQUI: Ativa quando o mouse entra no marcador
+                  onMouseOver={() => setItemFocado(item)}
+                  // MUDANÇA AQUI: Desativa quando o mouse sai do marcador
+                  onMouseOut={() => setItemFocado(null)}
+                >
+                  {/* BALÃO MÁGICO: Só renderiza se o mouse estiver em cima deste item */}
+                  {itemFocado && itemFocado.id === item.id && (
+                    <InfoWindow 
+                      position={{ lat: item.lat, lng: item.lng }}
+                      options={{ disableAutoPan: true }}
+                    >
+                      <div style={{ textAlign: 'center', padding: '4px', color: '#000', maxWidth: '140px' }}>
+                        <b style={{ display: 'block', marginBottom: '6px', fontSize: '13px' }}>
+                          {item.title}
+                        </b>
+                        {item.photo ? (
+                          <img 
+                            src={item.photo} 
+                            alt={item.title} 
+                            style={{ width: '120px', height: '90px', borderRadius: '6px', objectFit: 'cover', margin: '0 auto' }} 
+                          />
+                        ) : (
+                          <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>Sem foto informada</p>
+                        )}
+                      </div>
+                    </InfoWindow>
+                  )}
+                </MarkerF>
               ) : null
             ))}
           </GoogleMap>
@@ -212,10 +241,9 @@ export default function MapScreen() {
               <input 
                 type="file" 
                 accept="image/*" 
-                capture="environment" /* Abre a câmera no celular */
+                capture="environment" 
                 onChange={(e) => setFoto(e.target.files[0])} 
               />
-
 
               {/* Botões de Ação */}
               <div className="flex gap-3 mt-2">
@@ -234,7 +262,7 @@ export default function MapScreen() {
                 </button>
               </div>
 
-              {/* Botão de Excluir (Só aparece se estiver editando) */}
+              {/* Botão de Excluir */}
               {formData.id && (
                 <button 
                   type="button"
