@@ -17,7 +17,7 @@ const darkMinimalistStyle = [
   { featureType: "poi", elementType: "labels.text.fill", stylers: [{ color: "#757575" }] },
   { featureType: "poi.park", elementType: "geometry", stylers: [{ color: "#181818" }] },
   { featureType: "road", elementType: "geometry.fill", stylers: [{ color: "#2c2c2c" }] },
-  { featureType: "road", elementType: "labels.text.fill", stylers: [{ color: "#8a8a8a" }] },
+  { featureType: "road", elementType: "labelsvc re.text.fill", stylers: [{ color: "#8a8a8a" }] },
   { featureType: "water", elementType: "geometry", stylers: [{ color: "#000000" }] }
 ];
 
@@ -156,7 +156,18 @@ export default function MapScreen() {
                       position={{ lat: item.lat, lng: item.lng }}
                       options={{ disableAutoPan: true }}
                     >
-                      <div style={{ textAlign: 'center', padding: '4px', color: '#000', maxWidth: '140px' }}>
+                      <div
+                    style={{
+                      background: '#1a1a1a',
+                      color: '#fff',
+                      padding: '10px',
+                      borderRadius: '12px',
+                      maxWidth: '180px',
+                      textAlign: 'center',
+                      boxShadow: '0 8px 20px rgba(0,0,0,0.35)',
+                      border: '1px solid rgba(255,255,255,0.1)'
+                    }}
+>
                         <b style={{ display: 'block', marginBottom: '6px', fontSize: '13px' }}>
                           {item.title}
                         </b>
@@ -164,7 +175,14 @@ export default function MapScreen() {
                           <img 
                             src={item.photo} 
                             alt={item.title} 
-                            style={{ width: '120px', height: '90px', borderRadius: '6px', objectFit: 'cover', margin: '0 auto' }} 
+                           style={{
+                            width: '160px',
+                            height: '110px',
+                            borderRadius: '10px',
+                            objectFit: 'cover',
+                            margin: '0 auto',
+                            display: 'block'
+                          }} 
                           />
                         ) : (
                           <p style={{ fontSize: '11px', color: '#666', margin: '0' }}>Sem foto informada</p>
