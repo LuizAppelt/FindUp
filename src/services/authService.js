@@ -1,20 +1,21 @@
 import axios from 'axios';
 
+// URL da API no Render
 const API_URL = 'https://two025-01-apisample.onrender.com/auth';
 
+// 1. FUNÇÃO DE LOGIN
 export async function signIn(email, password) {
   try {
-    // Adicionado um timeout de 12 segundos (12000ms)
+    
     const response = await axios.post(
       `${API_URL}/signin`, 
       { email, password },
-      { timeout: 12000 } 
+      { timeout: 10000 } 
     );
     return response.data;
   } catch (error) {
-    // Captura caso a requisição tenha caído por estouro de tempo (Timeout)
     if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
-      throw new Error('O servidor está demorando para responder. Pode estar inicializando, tente novamente em instantes.');
+      throw new Error('O servidor está demorando para responder. Ele pode estar inicializando (Cold Start). Tente novamente em instantes.');
     }
 
     if (error.response) {
@@ -25,18 +26,22 @@ export async function signIn(email, password) {
         throw new Error('Usuário ou senha incorretos.');
       }
     }
-
-      throw new Error('Erro ao autenticar.');
+    throw new Error('Erro ao autenticar ou servidor indisponível.');
   }
 }
 
+// FUNÇÃO DE CADASTRO
 export async function signUp(name, email, password) {
   try {
-    const response = await axios.post(`${API_URL}/signup`, {
-      name,
-      email,
-      password,
-    });
+    const response = await axios.post(
+      `${API_URL}/signup`,
+      {
+        name,
+        email,
+        password,
+      },
+      { timeout: 10000 }
+    );
 
     return response.data;
   } catch (error) {

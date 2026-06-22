@@ -11,7 +11,6 @@ export async function getPoints(token) {
     });
 
   
-    // o objeto response.data possui os campos latitude e longitude mas precisamos mudar os nomes para lat lng
     const points = response.data.map(point => ({
       id: point.id,
       title: point.descricao,
