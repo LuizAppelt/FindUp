@@ -1,8 +1,8 @@
-import { useState, useCallback, useEffect } from 'react'; // 1. Adicionado o useEffect aqui
-import { GoogleMap, useJsApiLoader, MarkerF } from '@react-google-maps/api';
+import { useState, useCallback, useEffect } from 'react';
+import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
 
 const containerStyle = { width: '100%', height: '100vh' };
-// Esse passa a ser o centro padrão (caso o usuário negue o GPS)
+// Esse passa a ser o centro padrão caso o usuário negue o GPS ou dê erro
 const defaultCenter = { lat: -28.2612, lng: -52.4083 };
 
 // Estilo minimalista escuro (Dark/Black Mode)
@@ -27,8 +27,11 @@ export default function MapScreen() {
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   });
 
-  // 2. Estado para controlar o centro dinâmico do mapa
+  // Estado para controlar o centro dinâmico do mapa
   const [mapCenter, setMapCenter] = useState(defaultCenter);
+  
+  // NOVO: Estado para saber se ainda estamos buscando a localização do usuário
+  const [isLocating, setIsLocating] = useState(true);
 
   // Estado para armazenar os itens no mapa
   const [items, setItems] = useState([{}]);
@@ -38,22 +41,31 @@ export default function MapScreen() {
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [formData, setFormData] = useState({ id: null, title: '', description: '', type: 'lost', photo: '' });
   
-  // Estado para a foto (Corrigindo um erro onde 'setFoto' não existia no seu arquivo original)
+  // Estado para a foto
   const [foto, setFoto] = useState(null);
 
-  // 3. SEU CÓDIGO ADAPTADO: Captura a geolocalização e atualiza o estado do mapa
+  // Estado para controlar o Pop-up (InfoWindow)
+  const [hoveredItem, setHoveredItem] = useState(null);
+
+  // Captura a geolocalização e atualiza o estado do mapa
   useEffect(() => {
     if ("geolocation" in navigator) {
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const { latitude, longitude } = position.coords;
-          // Formatado como objeto {} exigido pelo Google Maps
           setMapCenter({ lat: latitude, lng: longitude });
+          setIsLocating(false); // Achou a localização, pode liberar o mapa
         },
         (error) => {
-          console.warn("Permissão de localização negada. Usando centro padrão.", error);
-        }
+          console.warn("Permissão de localização negada ou erro. Usando centro padrão.", error);
+          setIsLocating(false); // Deu erro, libera o mapa no centro padrão
+        },
+        // Adicionando opções para forçar alta precisão e não ficar travado para sempre
+        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
       );
+    } else {
+      console.warn("Geolocalização não suportada pelo navegador.");
+      setIsLocating(false);
     }
   }, []);
 
@@ -76,19 +88,25 @@ export default function MapScreen() {
   // Salvar ou Atualizar ponto
   const handleSave = (e) => {
     e.preventDefault();
+    
+    // Converte a foto para uma URL visualizável, se existir
+    const photoUrl = foto ? URL.createObjectURL(foto) : formData.photo;
+
     if (formData.id) {
       // Editar existente
-      setItems(items.map(item => item.id === formData.id ? { ...formData, ...selectedLocation } : item));
+      setItems(items.map(item => item.id === formData.id ? { ...formData, ...selectedLocation, photo: photoUrl } : item));
     } else {
       // Criar novo
       const newItem = {
         ...formData,
         ...selectedLocation,
+        photo: photoUrl,
         id: Date.now() // Gera um ID único temporário
       };
       setItems([...items, newItem]);
     }
     setIsModalOpen(false);
+    setFoto(null); // Limpa a foto do estado para o próximo cadastro
   };
 
   // Deletar ponto
@@ -118,11 +136,12 @@ export default function MapScreen() {
 
       {/* Mapa do Google */}
       <div className="absolute inset-0">
-        {isLoaded ? (
+        {/* NOVO: Agora só renderiza o mapa se a API carregou E já tentou buscar a localização */}
+        {isLoaded && !isLocating ? (
           <GoogleMap
             language="pt-BR"
             mapContainerStyle={containerStyle}
-            center={mapCenter} // 4. Alterado aqui de 'center' estático para 'mapCenter' dinâmico
+            center={mapCenter}
             zoom={15}
             onClick={handleMapClick}
             options={{
@@ -134,11 +153,13 @@ export default function MapScreen() {
           >
             {/* Renderiza todos os pontos salvos */}
             {items.map(item => (
-              item.id ? ( // Evita renderizar itens vazios iniciais
+              item.id ? ( 
                 <MarkerF 
                   key={item.id}
                   position={{ lat: item.lat, lng: item.lng }}
                   onClick={() => handleMarkerClick(item)}
+                  onMouseOver={() => setHoveredItem(item)} 
+                  onMouseOut={() => setHoveredItem(null)}  
                   icon={{
                     url: getMarkerIcon(item.type),
                     scaledSize: new window.google.maps.Size(35, 35)
@@ -146,10 +167,37 @@ export default function MapScreen() {
                 />
               ) : null
             ))}
+
+            {/* Renderiza o Pop-up (InfoWindow) se houver um item em hover */}
+            {hoveredItem && (
+              <InfoWindowF
+                position={{ lat: hoveredItem.lat, lng: hoveredItem.lng }}
+                options={{ 
+                  pixelOffset: new window.google.maps.Size(0, -35), 
+                  disableAutoPan: true 
+                }}
+              >
+                <div className="p-1 max-w-[180px] text-gray-800 font-sans">
+                  {hoveredItem.photo && (
+                    <img 
+                      src={hoveredItem.photo} 
+                      alt={hoveredItem.title} 
+                      className="w-full h-24 object-cover rounded-md mb-2 shadow-sm"
+                    />
+                  )}
+                  <h3 className="font-bold text-sm truncate">{hoveredItem.title}</h3>
+                  <p className="text-xs text-gray-600 mt-1 line-clamp-2">{hoveredItem.description}</p>
+                  <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${hoveredItem.type === 'lost' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
+                    {hoveredItem.type === 'lost' ? 'Perdido' : 'Encontrado'}
+                  </span>
+                </div>
+              </InfoWindowF>
+            )}
           </GoogleMap>
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
+          <div className="w-full h-full flex items-center justify-center flex-col gap-3">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
+            <p className="text-gray-400 text-sm animate-pulse">Buscando sua localização...</p>
           </div>
         )}
       </div>
@@ -199,23 +247,24 @@ export default function MapScreen() {
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/40 transition-colors text-sm resize-none"
               ></textarea>
 
-              {/* URL da Foto (Simulado para frontend) */}
-              <input 
-                type="text" 
-                placeholder="URL da Foto (Opcional)" 
-                value={formData.photo}
-                onChange={(e) => setFormData({...formData, photo: e.target.value})}
-                className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/40 transition-colors text-sm"
-              />
-              
-              {/* upar foto */}
-              <input 
-                type="file" 
-                accept="image/*" 
-                capture="environment" /* Abre a câmera no celular */
-                onChange={(e) => setFoto(e.target.files[0])} 
-              />
+              {/* Container para o upload de foto */}
+              <div className="upload-container">
+                <label 
+                  htmlFor="foto-upload" 
+                  className="block w-full p-3.5 bg-[#242424] text-[#9e9e9e] border border-[#333] rounded-lg cursor-pointer text-center hover:bg-[#2a2a2a] transition-colors text-sm"
+                >
+                  {foto ? foto.name : "📁 Escolher arquivo..."}
+                </label>
 
+                <input
+                  id="foto-upload"
+                  type="file" 
+                  accept="image/*" 
+                  capture="environment" 
+                  onChange={(e) => setFoto(e.target.files[0])} 
+                  style={{ display: 'none' }} 
+                />
+              </div>
 
               {/* Botões de Ação */}
               <div className="flex gap-3 mt-2">
