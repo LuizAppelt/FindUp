@@ -2,7 +2,6 @@
 
 html, body, #root {
     height: 100%;
-}
 
 .glass-effect {
   background: rgba(255, 255, 255, 0.2);
@@ -35,4 +34,5 @@ html, body, #root {
 .custom-file-upload:hover {
   background-color: #2a2a2a; /* Fica levemente mais claro ao passar o mouse */
   border-color: #444444;
+}
 }

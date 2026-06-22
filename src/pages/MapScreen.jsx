@@ -203,6 +203,7 @@ export default function MapScreen() {
       </div>
 
       {/* Modal de Cadastro/Edição de Ponto */}
+      {/* Edição de Ponto */}
       {isModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -254,6 +255,7 @@ export default function MapScreen() {
                   className="block w-full p-3.5 bg-[#242424] text-[#9e9e9e] border border-[#333] rounded-lg cursor-pointer text-center hover:bg-[#2a2a2a] transition-colors text-sm"
                 >
                   {foto ? foto.name : "📁 Escolher arquivo..."}
+                  {foto ? foto.name : " Escolher arquivo..."}
                 </label>
 
                 <input

@@ -1,15 +1,22 @@
 import axios from 'axios';
 
-
-"// TODO: Atualizar a URL da API para o ambiente de produção NOSSO//"
-"//TODO subir API no render.com e atualizar a URL abaixo//"
 const API_URL = 'https://two025-01-apisample.onrender.com/auth';
 
 export async function signIn(email, password) {
   try {
-    const response = await axios.post(`${API_URL}/signin`, { email, password });
+    // Adicionado um timeout de 12 segundos (12000ms)
+    const response = await axios.post(
+      `${API_URL}/signin`, 
+      { email, password },
+      { timeout: 12000 } 
+    );
     return response.data;
   } catch (error) {
+    // Captura caso a requisição tenha caído por estouro de tempo (Timeout)
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      throw new Error('O servidor está demorando para responder. Pode estar inicializando, tente novamente em instantes.');
+    }
+
     if (error.response) {
       if (error.response.status === 400) {
         throw new Error('Requisição inválida.');
@@ -18,7 +25,8 @@ export async function signIn(email, password) {
         throw new Error('Usuário ou senha incorretos.');
       }
     }
-    throw new Error('Erro ao autenticar.');
+
+      throw new Error('Erro ao autenticar.');
   }
 }
 
