@@ -1,6 +1,7 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { signUp } from "../services/authService";
+import background from "../assets/background.jpeg";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -53,11 +54,7 @@ export default function Register() {
     try {
       setLoading(true);
 
-      await signUp(
-        formData.nome,
-        formData.email,
-        formData.senha
-      );
+      await signUp(formData.nome, formData.email, formData.senha);
 
       alert("Usuário cadastrado com sucesso!");
 
@@ -70,22 +67,24 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-white flex flex-col items-center py-10 px-6 relative overflow-x-hidden">
-      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+    <div className="min-h-screen text-white flex justify-center items-center px-8 relative overflow-hidden"
+      style={{
+        backgroundImage: `url(${background})`,
+        backgroundSize: "cover",
+        backgroundPosition: "center",
+        backgroundRepeat: "no-repeat",
+      }}
+    >
+      <div className="absolute inset-0 bg-black/50"></div>
 
       <div className="relative z-10 w-full max-w-sm flex flex-col items-center">
-        <h1 className="text-4xl font-bold mb-1 tracking-tight">
-          FindUP
-        </h1>
+        <h1 className="text-4xl font-bold mb-1 tracking-tight">FindUP</h1>
 
         <h2 className="text-lg font-light mb-8 opacity-80">
           Cadastro de clientes
         </h2>
 
-        <form
-          onSubmit={handleSubmit}
-          className="w-full flex flex-wrap gap-4"
-        >
+        <form onSubmit={handleSubmit} className="w-full flex flex-wrap gap-4">
           {inputs.map((input, idx) => (
             <div
               key={idx}
@@ -109,9 +108,7 @@ export default function Register() {
           ))}
 
           {error && (
-            <p className="w-full text-center text-red-400 text-sm">
-              {error}
-            </p>
+            <p className="w-full text-center text-red-400 text-sm">{error}</p>
           )}
 
           <button
@@ -119,9 +116,7 @@ export default function Register() {
             disabled={loading}
             className="w-full bg-white/20 hover:bg-white/30 backdrop-blur-md border border-white/10 rounded-full py-3 mt-6 text-center font-medium transition-all shadow-lg disabled:opacity-50"
           >
-            {loading
-              ? "Cadastrando..."
-              : "Finalizar cadastro"}
+            {loading ? "Cadastrando..." : "Finalizar cadastro"}
           </button>
 
           <Link
