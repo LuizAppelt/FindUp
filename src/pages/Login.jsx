@@ -2,6 +2,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { signIn } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
+import background from "../assets/background.jpeg"
 
 function isValidEmail(email) {
   const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -64,8 +65,15 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-white flex flex-col justify-center px-8 relative overflow-hidden">
-      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+    <div className="min-h-screen text-white flex flex-col justify-center px-8 relative overflow-hidden"
+    style={{
+       backgroundImage: `url(${background})`,
+       backgroundSize: "cover",
+       backgroundPosition: "center",
+       backgroundRepeat: "no-repeat",
+      }}>
+      
+      <div className="absolute inset-0 bg-black/50"></div>
 
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm mx-auto">
         <h1 className="text-5xl font-bold mb-2 tracking-tight">
