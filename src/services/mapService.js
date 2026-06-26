@@ -37,7 +37,7 @@ export async function postPoint(token, pointData) {
         Authorization: `Bearer ${token}`,
       },
     });
-
+    
     if (response.status === 201) {
       return response.data;
     } else {

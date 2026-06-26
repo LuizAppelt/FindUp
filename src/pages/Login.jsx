@@ -2,6 +2,19 @@ import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";
 import { signIn } from "../services/authService";
 import { useAuth } from "../contexts/AuthContext";
+import background from "../assets/background.jpeg"
+
+function isValidEmail(email) {
+  const regex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return regex.test(email);
+}
+
+function validateLogin(email, password) {
+  if (!email.trim()) return "Email é obrigatório";
+  if (!isValidEmail(email)) return "Insira um e-mail válido";
+  if (!password.trim()) return "Senha é obrigatória";
+  return null;
+}
 
 export default function Login() {
   const navigate = useNavigate();
@@ -13,49 +26,54 @@ export default function Login() {
   const [error, setError] = useState("");
 
   const handleSubmit = async (e) => {
-  e.preventDefault();
-  setError("");
+    e.preventDefault();
+    setError("");
 
-  // Validação básica
-  if (!email.trim() || !password.trim()) {
-    setError("Por favor, preencha todos os campos.");
-    return;
-  }
+    const validationError = validateLogin(email, password);
+    if (validationError) {
+      setError(validationError);
+      return;
+    }
 
-  if (!email.includes("@")) {
-    setError("Insira um e-mail válido.");
-    return;
-  }
+    setLoading(true);
 
-  setLoading(true);
+    const apiTimeoutAlert = setTimeout(() => {
+      setError(
+        "O servidor está acordando... Isso pode levar até 1 minuto no primeiro acesso. Por favor, aguarde."
+      );
+    }, 10000);
 
-  // alerta se o render demorar, professor avisou que o servidor hiberna
-  const apiTimeoutAlert = setTimeout(() => {
-    setError("O servidor está acordando... Isso pode levar até 1 minuto no primeiro acesso. Por favor, aguarde.");
-  }, 10000); // Se passar de 10 segundos, avisa o usuário
+    try {
+      const token = await signIn(email, password);
+      console.log("Token recebido:", token);
 
-  try {
-    const token = await signIn(email, password);
-    console.log("Token recebido:", token);
-    
-    clearTimeout(apiTimeoutAlert); // Cancela o aviso se der certo
-    login(token);
-    navigate("/map");
-  } catch (err) {
-    clearTimeout(apiTimeoutAlert);
-    
-    // Melhorando a captura de mensagens de erro do Axios
-    const errorMessage = err.response?.data?.message || err.message || "Erro ao conectar com o servidor.";
-    setError(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+      clearTimeout(apiTimeoutAlert);
+      login(token);
+      navigate("/map");
+    } catch (err) {
+      clearTimeout(apiTimeoutAlert);
+
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Erro ao conectar com o servidor.";
+
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
-    <div className="min-h-screen bg-[#0b1120] text-white flex flex-col justify-center px-8 relative overflow-hidden">
-      {/* Background */}
-      <div className="absolute inset-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay"></div>
+    <div className="min-h-screen text-white flex flex-col justify-center px-8 relative overflow-hidden"
+    style={{
+       backgroundImage: `url(${background})`,
+       backgroundSize: "cover",
+       backgroundPosition: "center",
+       backgroundRepeat: "no-repeat",
+      }}>
+      
+      <div className="absolute inset-0 bg-black/50"></div>
 
       <div className="relative z-10 flex flex-col items-center w-full max-w-sm mx-auto">
         <h1 className="text-5xl font-bold mb-2 tracking-tight">
@@ -66,10 +84,7 @@ export default function Login() {
           Faça seu login
         </h2>
 
-        <form
-          onSubmit={handleSubmit}
-          className="w-full flex flex-col gap-4"
-        >
+        <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
           <div className="relative">
             <input
               type="email"
@@ -78,10 +93,7 @@ export default function Login() {
               onChange={(e) => setEmail(e.target.value)}
               className="w-full bg-white/5 border border-white/20 rounded-full px-6 py-3 outline-none focus:border-white/50 transition-colors backdrop-blur-md"
             />
-
-            <span className="absolute right-4 top-3.5 opacity-50">
-              ✉️
-            </span>
+            <span className="absolute right-4 top-3.5 opacity-50">✉️</span>
           </div>
 
           <div className="relative">
@@ -92,10 +104,7 @@ export default function Login() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-white/5 border border-white/20 rounded-full px-6 py-3 outline-none focus:border-white/50 transition-colors backdrop-blur-md"
             />
-
-            <span className="absolute right-4 top-3.5 opacity-50">
-              🔒
-            </span>
+            <span className="absolute right-4 top-3.5 opacity-50">🔒</span>
           </div>
 
           <div className="flex justify-end">
