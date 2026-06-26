@@ -18,21 +18,18 @@ export default function Register() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
+  // poderiamos deixar apenas o nome, email e senha, mas deixei os outros campos para futuras implementações
   const inputs = [
-    { key: "nome", name: "Nome completo", icon: "👤", type: "text" },
-    { key: "cpf", name: "CPF", icon: "🆔", type: "text", half: true },
-    { key: "telefone", name: "Telefone", icon: "📞", type: "tel", half: true },
-    { key: "endereco", name: "Endereço", icon: "📍", type: "text" },
-    { key: "email", name: "Email", icon: "✉️", type: "email" },
-    { key: "senha", name: "Senha", icon: "🔒", type: "password" },
-    {
-      key: "confirmarSenha",
-      name: "Confirme sua senha",
-      icon: "✔️",
-      type: "password",
-    },
+    { key: "nome", name: "Nome completo", type: "text" },
+    { key: "cpf", name: "CPF", type: "text", half: true },
+    { key: "telefone", name: "Telefone", type: "tel", half: true },
+    { key: "endereco", name: "Endereço", type: "text" },
+    { key: "email", name: "Email", type: "email" },
+    { key: "senha", name: "Senha", type: "password" },
+    { key: "confirmarSenha", name: "Confirme sua senha", type: "password",},
   ];
 
+  
   const handleChange = (e) => {
     setFormData({
       ...formData,
