@@ -1,11 +1,13 @@
 import { useState, useCallback, useEffect } from 'react';
 import { GoogleMap, useJsApiLoader, MarkerF, InfoWindowF } from '@react-google-maps/api';
+import { useAuth } from '../contexts/AuthContext'; // Importação do contexto de autenticação
+import { getPoints, postPoint } from '../services/mapService'; // Importação do serviço da API
 
 const containerStyle = { width: '100%', height: '100vh' };
-// Esse passa a ser o centro padrão caso o usuário negue o GPS ou dê erro
+// Centro padrão caso o utilizador negue o GPS ou ocorra um erro
 const defaultCenter = { lat: -28.2612, lng: -52.4083 };
 
-// Estilo minimalista escuro (Dark/Black Mode)
+// Estilo minimalista escuro do mapa
 const darkMinimalistStyle = [
   { elementType: "geometry", stylers: [{ color: "#121212" }] },
   { elementType: "labels.icon", stylers: [{ visibility: "off" }] },
@@ -22,91 +24,149 @@ const darkMinimalistStyle = [
 ];
 
 export default function MapScreen() {
+  const { token } = useAuth(); // Obtém o token de autenticação ativo
+  
   const { isLoaded } = useJsApiLoader({
     id: 'google-map-script',
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY
   });
 
-  // Estado para controlar o centro dinâmico do mapa
+  // Estados do mapa e localização
   const [mapCenter, setMapCenter] = useState(defaultCenter);
-  
-  // NOVO: Estado para saber se ainda estamos buscando a localização do usuário
   const [isLocating, setIsLocating] = useState(true);
+  
+  // CORRIGIDO: Inicialização com array vazio para evitar marcadores fantasmas
+  const [items, setItems] = useState([]); 
 
-  // Estado para armazenar os itens no mapa
-  const [items, setItems] = useState([{}]);
-
-  // Estados de controle do Modal
+  // Estados de controlo do Modal e formulários
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [loadingSave, setLoadingSave] = useState(false);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [formData, setFormData] = useState({ id: null, title: '', description: '', type: 'lost', photo: '' });
-  
-  // Estado para a foto
   const [foto, setFoto] = useState(null);
 
   // Estado para controlar o Pop-up (InfoWindow)
   const [hoveredItem, setHoveredItem] = useState(null);
 
-  // Captura a geolocalização e atualiza o estado do mapa
+  // 1. Efeito resiliente para capturar a geolocalização do utilizador
   useEffect(() => {
-    if ("geolocation" in navigator) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          const { latitude, longitude } = position.coords;
-          setMapCenter({ lat: latitude, lng: longitude });
-          setIsLocating(false); // Achou a localização, pode liberar o mapa
-        },
-        (error) => {
-          console.warn("Permissão de localização negada ou erro. Usando centro padrão.", error);
-          setIsLocating(false); // Deu erro, libera o mapa no centro padrão
-        },
-        // Adicionando opções para forçar alta precisão e não ficar travado para sempre
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
-    } else {
-      console.warn("Geolocalização não suportada pelo navegador.");
+    if (!("geolocation" in navigator)) {
+      console.warn("Geolocalização não suportada.");
       setIsLocating(false);
+      return;
     }
+
+    const onSuccess = (position) => {
+      const { latitude, longitude } = position.coords;
+      setMapCenter({ lat: latitude, lng: longitude });
+      setIsLocating(false);
+    };
+
+    const onError = (error) => {
+      console.warn(`Erro no GPS (${error.code}): ${error.message}. Tentando por rede...`);
+      
+      // Segunda tentativa: sem alta precisão (mais rápido em ambientes fechados/desktops)
+      navigator.geolocation.getCurrentPosition(
+        onSuccess,
+        (err) => {
+          console.error("Ambas as tentativas de localização falharam. Usando centro padrão.", err);
+          setIsLocating(false);
+        },
+        { enableHighAccuracy: false, timeout: 15000, maximumAge: 60000 }
+      );
+    };
+
+    // Primeira tentativa com alta precisão
+    navigator.geolocation.getCurrentPosition(onSuccess, onError, {
+      enableHighAccuracy: true,
+      timeout: 8000,
+      maximumAge: 0
+    });
   }, []);
+
+  // 2. NOVO: Carregar marcadores diretamente da API quando o token estiver disponível
+  useEffect(() => {
+    async function loadMarkers() {
+      if (!token) return;
+      try {
+        const apiPoints = await getPoints(token);
+        setItems(apiPoints);
+      } catch (err) {
+        console.error("Erro ao carregar pontos do servidor:", err.message);
+      }
+    }
+    loadMarkers();
+  }, [token]);
 
   // Clique no Mapa: Prepara para criar novo ponto
   const handleMapClick = useCallback((event) => {
     const lat = event.latLng.lat();
     const lng = event.latLng.lng();
     setSelectedLocation({ lat, lng });
-    setFormData({ id: null, title: '', description: '', type: 'lost', photo: '' }); // Limpa o form
+    setFormData({ id: null, title: '', description: '', type: 'lost', photo: '' });
     setIsModalOpen(true);
   }, []);
 
-  // Clique no Marcador: Prepara para editar/ver ponto existente
+  // Clique no Marcador: Adaptado para ler tanto propriedades diretas como nós aninhados
   const handleMarkerClick = (item) => {
-    setSelectedLocation({ lat: item.lat, lng: item.lng });
-    setFormData(item);
+    const lat = item.position?.lat || item.lat;
+    const lng = item.position?.lng || item.lng;
+    setSelectedLocation({ lat, lng });
+    setFormData({
+      id: item.id,
+      title: item.title || '',
+      description: item.description || '',
+      type: item.type || 'lost',
+      photo: item.photo || ''
+    });
     setIsModalOpen(true);
   };
 
-  // Salvar ou Atualizar ponto
-  const handleSave = (e) => {
+  // Salvar ou Atualizar ponto na API e localmente
+  const handleSave = async (e) => {
     e.preventDefault();
+    setLoadingSave(true);
     
-    // Converte a foto para uma URL visualizável, se existir
     const photoUrl = foto ? URL.createObjectURL(foto) : formData.photo;
 
-    if (formData.id) {
-      // Editar existente
-      setItems(items.map(item => item.id === formData.id ? { ...formData, ...selectedLocation, photo: photoUrl } : item));
-    } else {
-      // Criar novo
-      const newItem = {
-        ...formData,
-        ...selectedLocation,
-        photo: photoUrl,
-        id: Date.now() // Gera um ID único temporário
-      };
-      setItems([...items, newItem]);
+    // Payload estruturado exatamente como o seu backend espera receber
+    const pointPayload = {
+      descricao: formData.title,
+      latitude: selectedLocation.lat,
+      longitude: selectedLocation.lng
+      // Nota: Insira aqui campos extras (ex: tipo, descricao_detalhada) se a API aceitar
+    };
+
+    try {
+      if (formData.id) {
+        // Atualização Local (Mock) - Ajustar se o outro grupo criar a rota PUT/PATCH
+        setItems(items.map(item => item.id === formData.id ? { ...formData, position: selectedLocation, photo: photoUrl } : item));
+        setIsModalOpen(false);
+      } else {
+        // Integração com a API - Envia para o banco de dados via Axios
+        let savedPoint = null;
+        if (token) {
+          savedPoint = await postPoint(token, pointPayload);
+        }
+
+        const newItem = {
+          id: savedPoint?.id || Date.now(), // Fallback seguro caso a API não devolva o ID
+          title: formData.title,
+          description: formData.description,
+          type: formData.type,
+          photo: photoUrl,
+          position: selectedLocation // Mantém a estrutura padronizada
+        };
+
+        setItems([...items, newItem]);
+        setIsModalOpen(false);
+      }
+      setFoto(null);
+    } catch (err) {
+      alert("Falha ao salvar no servidor: " + err.message);
+    } finally {
+      setLoadingSave(false);
     }
-    setIsModalOpen(false);
-    setFoto(null); // Limpa a foto do estado para o próximo cadastro
   };
 
   // Deletar ponto
@@ -117,11 +177,11 @@ export default function MapScreen() {
     setIsModalOpen(false);
   };
 
-  // Ícones dinâmicos: Vermelho para perdido, Azul para achado
+  // Ícones dinâmicos
   const getMarkerIcon = (type) => {
-    return type === 'lost' 
-      ? 'https://cdn-icons-png.flaticon.com/128/2776/2776067.png' // Ícone perdido
-      : 'https://cdn-icons-png.flaticon.com/128/149/149060.png'; // Ícone encontrado
+    return type === 'found' 
+      ? 'https://cdn-icons-png.flaticon.com/128/149/149060.png'  // Ícone encontrado (Azul)
+      : 'https://cdn-icons-png.flaticon.com/128/2776/2776067.png'; // Ícone perdido (Vermelho)
   };
 
   return (
@@ -136,7 +196,6 @@ export default function MapScreen() {
 
       {/* Mapa do Google */}
       <div className="absolute inset-0">
-        {/* NOVO: Agora só renderiza o mapa se a API carregou E já tentou buscar a localização */}
         {isLoaded && !isLocating ? (
           <GoogleMap
             language="pt-BR"
@@ -151,12 +210,18 @@ export default function MapScreen() {
               gestureHandling: 'greedy'
             }}
           >
-            {/* Renderiza todos os pontos salvos */}
-            {items.map(item => (
-              item.id ? ( 
+            {/* Renderiza marcadores com proteção de estrutura de dados (lat/lng ou position) */}
+            {items.map(item => {
+              if (!item || !item.id) return null;
+              const markerLat = item.position?.lat || item.lat;
+              const markerLng = item.position?.lng || item.lng;
+
+              if (!markerLat || !markerLng) return null;
+
+              return (
                 <MarkerF 
                   key={item.id}
-                  position={{ lat: item.lat, lng: item.lng }}
+                  position={{ lat: markerLat, lng: markerLng }}
                   onClick={() => handleMarkerClick(item)}
                   onMouseOver={() => setHoveredItem(item)} 
                   onMouseOut={() => setHoveredItem(null)}  
@@ -165,13 +230,16 @@ export default function MapScreen() {
                     scaledSize: new window.google.maps.Size(35, 35)
                   }}
                 />
-              ) : null
-            ))}
+              );
+            })}
 
-            {/* Renderiza o Pop-up (InfoWindow) se houver um item em hover */}
+            {/* Renderiza o Pop-up (InfoWindow) */}
             {hoveredItem && (
               <InfoWindowF
-                position={{ lat: hoveredItem.lat, lng: hoveredItem.lng }}
+                position={{ 
+                  lat: hoveredItem.position?.lat || hoveredItem.lat, 
+                  lng: hoveredItem.position?.lng || hoveredItem.lng 
+                }}
                 options={{ 
                   pixelOffset: new window.google.maps.Size(0, -35), 
                   disableAutoPan: true 
@@ -187,8 +255,8 @@ export default function MapScreen() {
                   )}
                   <h3 className="font-bold text-sm truncate">{hoveredItem.title}</h3>
                   <p className="text-xs text-gray-600 mt-1 line-clamp-2">{hoveredItem.description}</p>
-                  <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${hoveredItem.type === 'lost' ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'}`}>
-                    {hoveredItem.type === 'lost' ? 'Perdido' : 'Encontrado'}
+                  <span className={`inline-block mt-2 text-[10px] font-bold px-2 py-0.5 rounded-full ${hoveredItem.type === 'found' ? 'bg-blue-100 text-blue-600' : 'bg-red-100 text-red-600'}`}>
+                    {hoveredItem.type === 'found' ? 'Encontrado' : 'Perdido'}
                   </span>
                 </div>
               </InfoWindowF>
@@ -197,12 +265,12 @@ export default function MapScreen() {
         ) : (
           <div className="w-full h-full flex items-center justify-center flex-col gap-3">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-white"></div>
-            <p className="text-gray-400 text-sm animate-pulse">Buscando sua localização...</p>
+            <p className="text-gray-400 text-sm animate-pulse">A carregar mapa e localização...</p>
           </div>
         )}
       </div>
 
-      {/* Edição de Ponto */}
+      {/* Modal de Criação / Edição de Ponto */}
       {isModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
           <div className="bg-[#1a1a1a] border border-white/10 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
@@ -247,7 +315,7 @@ export default function MapScreen() {
                 className="w-full bg-white/5 border border-white/10 rounded-lg px-4 py-3 outline-none focus:border-white/40 transition-colors text-sm resize-none"
               ></textarea>
 
-              {/* Container para o upload de foto */}
+              {/* Input de Fotografia */}
               <div className="upload-container">
                 <label 
                   htmlFor="foto-upload" 
@@ -270,20 +338,22 @@ export default function MapScreen() {
               <div className="flex gap-3 mt-2">
                 <button 
                   type="button" 
+                  disabled={loadingSave}
                   onClick={() => setIsModalOpen(false)}
-                  className="flex-1 bg-white/5 hover:bg-white/10 text-white rounded-lg py-3 text-sm font-medium transition-colors"
+                  className="flex-1 bg-white/5 hover:bg-white/10 text-white rounded-lg py-3 text-sm font-medium transition-colors disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button 
                   type="submit"
-                  className={`flex-1 rounded-lg py-3 text-sm font-medium transition-colors text-white shadow-lg ${formData.type === 'lost' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
+                  disabled={loadingSave}
+                  className={`flex-1 rounded-lg py-3 text-sm font-medium transition-colors text-white shadow-lg disabled:opacity-50 ${formData.type === 'lost' ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'}`}
                 >
-                  Salvar
+                  {loadingSave ? 'A guardar...' : 'Salvar'}
                 </button>
               </div>
 
-              {/* Botão de Excluir (Só aparece se estiver editando) */}
+              {/* Botão de Excluir */}
               {formData.id && (
                 <button 
                   type="button"
