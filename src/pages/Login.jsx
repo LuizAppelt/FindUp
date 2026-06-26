@@ -14,20 +14,39 @@ export default function Login() {
 
   const handleSubmit = async (e) => {
   e.preventDefault();
-
   setError("");
+
+  // Validação básica
+  if (!email.trim() || !password.trim()) {
+    setError("Por favor, preencha todos os campos.");
+    return;
+  }
+
+  if (!email.includes("@")) {
+    setError("Insira um e-mail válido.");
+    return;
+  }
+
   setLoading(true);
+
+  // alerta se o render demorar, professor avisou que o servidor hiberna
+  const apiTimeoutAlert = setTimeout(() => {
+    setError("O servidor está acordando... Isso pode levar até 1 minuto no primeiro acesso. Por favor, aguarde.");
+  }, 10000); // Se passar de 10 segundos, avisa o usuário
 
   try {
     const token = await signIn(email, password);
-
     console.log("Token recebido:", token);
-
+    
+    clearTimeout(apiTimeoutAlert); // Cancela o aviso se der certo
     login(token);
-
     navigate("/map");
   } catch (err) {
-    setError(err.message);
+    clearTimeout(apiTimeoutAlert);
+    
+    // Melhorando a captura de mensagens de erro do Axios
+    const errorMessage = err.response?.data?.message || err.message || "Erro ao conectar com o servidor.";
+    setError(errorMessage);
   } finally {
     setLoading(false);
   }
@@ -110,29 +129,6 @@ export default function Login() {
               Cadastrar-se
             </Link>
           </div>
-
-          <div className="flex items-center my-4 opacity-50">
-            <div className="flex-grow border-t border-gray-400"></div>
-
-            <span className="px-3 text-xs font-bold uppercase">
-              ou
-            </span>
-
-            <div className="flex-grow border-t border-gray-400"></div>
-          </div>
-
-          <button
-            type="button"
-            className="w-full bg-white text-gray-800 rounded-lg py-3 flex items-center justify-center gap-3 font-medium hover:bg-gray-100 transition-colors"
-          >
-            <img
-              src="https://www.svgrepo.com/show/475656/google-color.svg"
-              alt="Google"
-              className="w-5 h-5"
-            />
-
-            Fazer Login com o Google
-          </button>
         </form>
       </div>
     </div>

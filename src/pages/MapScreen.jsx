@@ -202,7 +202,6 @@ export default function MapScreen() {
         )}
       </div>
 
-      {/* Modal de Cadastro/Edição de Ponto */}
       {/* Edição de Ponto */}
       {isModalOpen && (
         <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm px-4">
@@ -254,7 +253,6 @@ export default function MapScreen() {
                   htmlFor="foto-upload" 
                   className="block w-full p-3.5 bg-[#242424] text-[#9e9e9e] border border-[#333] rounded-lg cursor-pointer text-center hover:bg-[#2a2a2a] transition-colors text-sm"
                 >
-                  {foto ? foto.name : "📁 Escolher arquivo..."}
                   {foto ? foto.name : " Escolher arquivo..."}
                 </label>
 
