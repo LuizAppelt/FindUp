@@ -10,21 +10,18 @@ export async function getPoints(token) {
       },
     });
 
-  
     const points = response.data.map(point => ({
       id: point.id,
       title: point.descricao,
+      description: point.detalhes || '',
+      type: point.tipo || 'lost',
       position: {
         lat: point.latitude,
         lng: point.longitude,
       },
     }));
 
-    if (response.status === 200) {
-      return points;
-    } else {
-      throw new Error('Erro ao buscar pontos');
-    }
+    return points;
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Erro ao buscar pontos');
   }
@@ -37,7 +34,7 @@ export async function postPoint(token, pointData) {
         Authorization: `Bearer ${token}`,
       },
     });
-    
+
     if (response.status === 201) {
       return response.data;
     } else {
@@ -45,5 +42,19 @@ export async function postPoint(token, pointData) {
     }
   } catch (error) {
     throw new Error(error.response?.data?.message || 'Erro ao cadastrar ponto');
+  }
+}
+
+export async function updatePoint(token, id, pointData) {
+  try {
+    const response = await axios.put(`${BASE_URL}/${id}`, pointData, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    return response.data;
+  } catch (error) {
+    throw new Error(error.response?.data?.message || 'Erro ao atualizar ponto');
   }
 }
