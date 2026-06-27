@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // URL da API no Render
-const API_URL = 'https://two025-01-apisample.onrender.com/auth';
+const API_URL = 'https://findup-backend.onrender.com/auth';
 
 // 1. FUNÇÃO DE LOGIN
 export async function signIn(email, password) {
